@@ -13,12 +13,14 @@ from telegram.ext import CommandHandler, Updater
 
 # region log
 
-coloredlogs.install(fmt='[%(name)s][%(levelname)s] (%(filename)s:%(lineno)d):\n%(message)s\n', level='DEBUG')
+coloredlogs.install(
+    fmt='[%(name)s][%(levelname)s] (%(filename)s:%(lineno)d):\n%(message)s\n', level='DEBUG')
 
 
 def log_except_hook(*exc_info):
     text = "".join(traceback.format_exception(*exc_info))
     logging.error("Unhandled exception: %s", text)
+
 
 sys.excepthook = log_except_hook
 
@@ -93,15 +95,16 @@ class MainProcess(Daemon):
             daemon=True)
         threaded_server.start()
 
-        should_wait = True
+        should_wait = True  # Loop to connect cq-http-api
         while should_wait:
             try:
                 bot_status = qq_bot.get_status()
                 should_wait = False
             except Exception as e:
-                logger.warning('Could not reach Coolq-http-api, keep waiting...')
+                logger.warning(
+                    'Could not reach Coolq-http-api, keep waiting...')
                 time.sleep(1)
-        logger.info('Coolq-http-api status: ok')
+        logger.info('Coolq-http-api status: [\033[0;32;40mOK\033[0m]')
         coolq_version = global_vars.qq_bot.get_version_info()['coolq_edition']
         global_vars.create_variable("JQ_MODE", coolq_version == 'pro')
         logger.info(f'Coolq {coolq_version} detected')

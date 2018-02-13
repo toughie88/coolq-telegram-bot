@@ -1,6 +1,13 @@
 """Generic linux daemon base class for python 3.x."""
 """From https://web.archive.org/web/20160305151936/http://www.jejik.com/articles/2007/02/a_simple_unix_linux_daemon_in_python/"""
-import sys, os, time, atexit, signal
+import atexit
+import logging
+import os
+import signal
+import sys
+import time
+
+logger = logging.getLogger('CTB.Daemon')
 
 
 class Daemon:
@@ -10,7 +17,7 @@ class Daemon:
 
     def __init__(self, pidfile):
         self.pidfile = pidfile
-        signal.signal(signal.SIGTERM,self.stop)
+        signal.signal(signal.SIGTERM, self.stop)
 
     def daemonize(self):
         """Deamonize class. UNIX double fork mechanism."""
@@ -60,6 +67,23 @@ class Daemon:
     def delpid(self):
         os.remove(self.pidfile)
 
+    def getpid(self):
+        "Get the pid from the pidfile"
+        try:
+            with open(self.pidfile, 'r') as pf:
+                pid = int(pf.read().strip())
+        except IOError:
+            pid = None
+
+        if not pid:
+            message = "pidfile {0} does not exist. " + \
+                      "Daemon not running?\n"
+            # sys.stderr.write(message.format(self.pidfile))
+            logger.error(message.format(self.pidfile))
+            return None  # not an error in a restart
+        else:
+            return pid
+
     def start(self):
         """Start the daemon."""
 
@@ -78,25 +102,21 @@ class Daemon:
             sys.exit(1)
 
         # Start the daemon
-        self.daemonize()
-        self.run()
+        try:
+            self.daemonize()
+            self.run()
+        except Exception as e:
+            logger.critical('An unexpected error occur !')
+            raise e
+        else:
+            pid = self.getpid()
+            if pid != None:
+                logger.info(
+                    f'daemon started at pid={pid}, Welcome to use CTBot')
 
     def stop(self):
         """Stop the daemon."""
-
-        # Get the pid from the pidfile
-        try:
-            with open(self.pidfile, 'r') as pf:
-                pid = int(pf.read().strip())
-        except IOError:
-            pid = None
-
-        if not pid:
-            message = "pidfile {0} does not exist. " + \
-                      "Daemon not running?\n"
-            sys.stderr.write(message.format(self.pidfile))
-            return  # not an error in a restart
-
+        pid = self.getpid()
         # Try killing the daemon process
         try:
             while 1:
@@ -107,6 +127,7 @@ class Daemon:
             if e.find("No such process") > 0:
                 if os.path.exists(self.pidfile):
                     os.remove(self.pidfile)
+                    logger.info(f"CTBot daemon(pid={pid}) stopped")
             else:
                 print(str(err.args))
                 sys.exit(1)
