@@ -7,17 +7,16 @@ import signal
 import sys
 import time
 
-logger = logging.getLogger('CTB.Daemon')
-
 
 class Daemon:
     """A generic daemon class.
 
     Usage: subclass the daemon class and override the run() method."""
 
-    def __init__(self, pidfile):
+    def __init__(self, pidfile, logClass: logging.Logger):
         self.pidfile = pidfile
         signal.signal(signal.SIGTERM, self.stop)
+        self.logger = logClass
 
     def daemonize(self):
         """Deamonize class. UNIX double fork mechanism."""
@@ -28,7 +27,8 @@ class Daemon:
                 # exit first parent
                 sys.exit(0)
         except OSError as err:
-            sys.stderr.write('fork #1 failed: {0}\n'.format(err))
+            # sys.stderr.write('fork #1 failed: {0}\n'.format(err))
+            self.logger.critical('fork #1 failed: {0}\n'.format(err))
             sys.exit(1)
 
         # decouple from parent environment
@@ -43,7 +43,8 @@ class Daemon:
                 # exit from second parent
                 sys.exit(0)
         except OSError as err:
-            sys.stderr.write('fork #2 failed: {0}\n'.format(err))
+            # sys.stderr.write('fork #2 failed: {0}\n'.format(err))
+            self.logger.critical('fork #2 failed: {0}\n'.format(err))
             sys.exit(1)
 
         # redirect standard file descriptors
@@ -79,7 +80,7 @@ class Daemon:
             message = "pidfile {0} does not exist. " + \
                       "Daemon not running?\n"
             # sys.stderr.write(message.format(self.pidfile))
-            logger.error(message.format(self.pidfile))
+            self.logger.error(message.format(self.pidfile))
             return None  # not an error in a restart
         else:
             return pid
@@ -106,12 +107,12 @@ class Daemon:
             self.daemonize()
             self.run()
         except Exception as e:
-            logger.critical('An unexpected error occur !')
+            self.logger.critical('An unexpected error occur !')
             raise e
         else:
             pid = self.getpid()
             if pid != None:
-                logger.info(
+                self.logger.info(
                     f'daemon started at pid={pid}, Welcome to use CTBot')
 
     def stop(self):
@@ -127,7 +128,7 @@ class Daemon:
             if e.find("No such process") > 0:
                 if os.path.exists(self.pidfile):
                     os.remove(self.pidfile)
-                    logger.info(f"CTBot daemon(pid={pid}) stopped")
+                    self.logger.info(f"CTBot daemon(pid={pid}) stopped")
             else:
                 print(str(err.args))
                 sys.exit(1)

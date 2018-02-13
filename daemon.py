@@ -127,7 +127,8 @@ run     - run as foreground Debug mode. every log will print to screen and log t
 """
     argP.add_argument("command", type=str, action="store",
                       choices=['start', 'stop', 'restart', 'run'], help=cmdHelpStr)
-    daemon = MainProcess('/tmp/coolq-telegram-bot.pid')
+    daemon = MainProcess('/tmp/coolq-telegram-bot.pid',
+                         logging.getLogger("CTBMain.daemon"))
     args = argP.parse_args()
     if args.command == 'start':
         daemon.start()
